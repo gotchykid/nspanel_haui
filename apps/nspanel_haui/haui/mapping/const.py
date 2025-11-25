@@ -152,7 +152,9 @@ DEFAULT_CONFIG = {
         "sound_on_notification": True,
     },
     # mqtt related settings
-    "mqtt": {},
+    "mqtt": {
+        "topic_prefix": "nspanel_haui/nspanel_haui",
+    },
     # connection related settings
     "connection": {
         "heartbeat_interval": None,  # Default 5 sec, None means use interval provided by device, value in seconds

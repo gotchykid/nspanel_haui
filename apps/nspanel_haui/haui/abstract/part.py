@@ -30,20 +30,10 @@ class HAUIPart(HAUIBase):
 
     def start(self) -> None:
         """Starts the object."""
-        self.app.log(f"HAUIPart.start() called for {type(self).__name__}, already started: {self._started}")
         if self._started:
-            self.app.log(f"HAUIPart.start() - {type(self).__name__} already started, skipping")
             return
         self._started = True
-        self.app.log(f"HAUIPart.start() - calling start_part() for {type(self).__name__}")
-        try:
-            self.start_part()
-            self.app.log(f"HAUIPart.start() - start_part() completed for {type(self).__name__}")
-        except Exception as e:
-            self.app.log(f"HAUIPart.start() - ERROR in start_part() for {type(self).__name__}: {e}")
-            import traceback
-            self.app.log(f"HAUIPart.start() - Traceback: {traceback.format_exc()}")
-            raise
+        self.start_part()
 
     def stop(self) -> None:
         """Stops the object."""

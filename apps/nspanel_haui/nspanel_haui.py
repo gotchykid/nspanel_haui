@@ -30,23 +30,11 @@ class NSPanelHAUI(hass.Hass):
 
     def initialize(self):
         """ Called from AppDaemon when starting. """
-        self.log("=== NSPanelHAUI initialize() called ===")
-        self.log(f"App name (self.name): {getattr(self, 'name', 'NOT FOUND')}")
-        self.log(f"App args: {self.args}")
-        
         # create config
-        self.log("Creating HAUIConfig...")
         self.config = HAUIConfig(self, self.args["config"])
-        self.log("HAUIConfig created")
-        
         # create the nspanel device representation
-        self.log("Creating HAUIDevice...")
         self.device = HAUIDevice(self, self.config.get("device"))
-        self.log("HAUIDevice created")
-        
         # create mqtt controller
-        self.log("Creating HAUIMQTTController...")
-        self.log(f"MQTT config: {self.config.get('mqtt')}")
         mqtt_controller = HAUIMQTTController(
             self,
             self.config.get("mqtt"),
@@ -54,7 +42,6 @@ class NSPanelHAUI(hass.Hass):
             self.callback_event,
         )
         self.controller["mqtt"] = mqtt_controller
-        self.log("HAUIMQTTController created and stored")
         # create connection controller
         connection_controller = HAUIConnectionController(
             self, self.config.get("connection"), self.callback_connection
@@ -87,31 +74,10 @@ class NSPanelHAUI(hass.Hass):
 
     def start(self):
         """ Called when starting. """
-        self.log("=== NSPanelHAUI start() called ===")
-        self.log(f"Number of controllers: {len(self.controller)}")
-        self.log(f"Controller keys: {list(self.controller.keys())}")
-        
-        for controller_name, controller in self.controller.items():
+        for controller in self.controller.values():
             if not isinstance(controller, NSPanelHAUI):
-                self.log(f"Starting controller: {controller_name} (type: {type(controller)})")
-                try:
-                    controller.start()
-                    self.log(f"Controller {controller_name} started successfully")
-                except Exception as e:
-                    self.log(f"ERROR starting controller {controller_name}: {e}")
-                    import traceback
-                    self.log(f"Traceback: {traceback.format_exc()}")
-        
-        self.log("Starting device...")
-        try:
-            self.device.start()
-            self.log("Device started successfully")
-        except Exception as e:
-            self.log(f"ERROR starting device: {e}")
-            import traceback
-            self.log(f"Traceback: {traceback.format_exc()}")
-        
-        self.log("=== NSPanelHAUI start() completed ===")
+                controller.start()
+        self.device.start()
 
     def stop(self):
         """ Called when stopping. """
