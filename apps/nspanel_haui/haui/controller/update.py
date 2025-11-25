@@ -226,10 +226,12 @@ class HAUIUpdateController(HAUIPart):
             self.log("No update url available")
             return
         self.log(f"Update URL: {update_url}")
-        # run update - use device name from config
-        name = self.app.device.get("name", "nspanel_haui")
-        service_name = f"esphome/{name}_upload_tft_url"
+        # run update - use AppDaemon instance name (convert dashes to underscores for ESPHome)
+        # ESPHome service names use underscores, e.g., l2_bedroom_s16_upload_tft
+        instance_name = self.app.name.replace("-", "_")
+        service_name = f"esphome/{instance_name}_upload_tft"
         self.log(f"Calling ESPHome service: {service_name}")
+        self.log(f"Using instance name: {self.app.name} -> {instance_name}")
         try:
             self.app.call_service(service_name, url=update_url)
             self.log(f"Successfully called service {service_name}")
