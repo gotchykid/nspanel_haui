@@ -23,7 +23,6 @@ class HAUIMQTTController(HAUIPart):
             event_callback (method): Callback for events
         """
         super().__init__(app, config)
-        self.log(f"Creating MQTT Controller with config: {config}")
         self.mqtt = mqtt
         self.prev_cmd = None
         self._topic_prefix = None
@@ -37,12 +36,14 @@ class HAUIMQTTController(HAUIPart):
     def start_part(self):
         """ Starts the part. """
         # topics for communication with panel
-        name = self.app.device.get_name()
+        # use AppDaemon instance name (panel name from apps.yaml)
+        name = self.app.name
         self._topic_prefix = f"nspanel_haui/{name}"
         if self._topic_prefix.endswith("/"):
             self._topic_prefix = self._topic_prefix[:-1]
         self._topic_cmd = f"{self._topic_prefix}/cmd"
         self._topic_recv = f"{self._topic_prefix}/recv"
+        self.log(f"Using MQTT topic prefix: {self._topic_prefix}")
         # setup listener
         self.mqtt.mqtt_subscribe(topic=self._topic_recv)
         self.mqtt.listen_event(
