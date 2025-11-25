@@ -202,10 +202,24 @@ class HAUIUpdateController(HAUIPart):
     def run_update_display(self):
         """ Runs the update process for the display. """
         self.log("=== run_update_display() called ===")
+        
+        # Ensure release info is fetched first
+        self.log("Fetching release info from GitHub...")
+        self._update_release_infos()
+        
         latest_release = self._get_latest_release()
         if latest_release is None:
-            self.log("No release info available")
-            return
+            self.log("No release info available after fetch")
+            # Try fetching again in case of transient error
+            self.log("Retrying release info fetch...")
+            import time
+            time.sleep(2)
+            self._update_release_infos()
+            latest_release = self._get_latest_release()
+            if latest_release is None:
+                self.log("Still no release info available, cannot proceed with update")
+                return
+        
         self.log(f"Latest release: {latest_release.get('tag_name', 'unknown')}")
         update_url = self._get_update_url(latest_release)
         if update_url is None:
