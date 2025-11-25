@@ -87,12 +87,13 @@ class HAUIUpdateController(HAUIPart):
         self._interval = self.get("update_interval", 0)
         self._interval_delay = self.get("on_connect_delay", 30)
         self._start_timer()
-        # If auto_install is enabled, check device info on startup
-        # in case device is already connected
+        # If auto_install is enabled, try to install immediately
+        # This is useful for initial setup when device might not have TFT installed
         if self.get("auto_install", True):
-            self.log("auto_install enabled, checking if device info is available")
-            # Request device info - this will trigger check_installed_version when received
-            self.request_device_info(False)
+            self.log("auto_install enabled, attempting initial TFT install check")
+            # Try to install immediately - this will work if device is connected
+            # or will be retried when device connects
+            threading.Timer(5.0, self._try_auto_install).start()
 
     def stop_part(self):
         """ Stops the part. """
@@ -223,6 +224,33 @@ class HAUIUpdateController(HAUIPart):
             import traceback
             self.log(f"Traceback: {traceback.format_exc()}")
 
+    def _try_auto_install(self):
+        """ Try to auto-install TFT if auto_install is enabled. """
+        self.log("=== _try_auto_install() called ===")
+        if not self.get("auto_install", True):
+            self.log("auto_install is disabled, skipping")
+            return
+        
+        device_info = self.app.device.device_info
+        self.log(f"device_info: {device_info}")
+        self.log(f"device.connected: {self.app.device.connected}")
+        
+        # If device info is empty or version is missing/invalid, try to install
+        if not device_info or device_info.get("tft_version") is None:
+            self.log("Device info missing or version not available, attempting auto install")
+            self.run_update_display()
+            return
+        
+        installed_version = device_info.get("tft_version")
+        if installed_version:
+            v_inst = self._parse_version(installed_version)
+            if v_inst == Version("0.0.0"):
+                self.log(f"Invalid version detected: {installed_version}, attempting auto install")
+                self.run_update_display()
+                return
+        
+        self.log("Device appears to have valid version, skipping auto install")
+
     def check_installed_version(self):
         """ Checks on connect if a update is available. """
         self.log("=== check_installed_version() called ===")
@@ -231,8 +259,8 @@ class HAUIUpdateController(HAUIPart):
         self.log(f"device.connected: {self.app.device.connected}")
         self.log(f"auto_install setting: {self.get('auto_install', True)}")
         
-        required_version = device_info.get("required_tft_version")
-        installed_version = device_info.get("tft_version")
+        required_version = device_info.get("required_tft_version") if device_info else None
+        installed_version = device_info.get("tft_version") if device_info else None
         
         self.log(f"required_version: {required_version}")
         self.log(f"installed_version: {installed_version}")
@@ -380,6 +408,11 @@ class HAUIUpdateController(HAUIPart):
         if event.name == ESP_EVENT["connected"]:
             self.log("=== Device connected event received ===")
             self._stop_timer_delay()
+            # If auto_install is enabled, try to install immediately on connect
+            if self.get("auto_install", True):
+                self.log("auto_install enabled, attempting auto install on connect")
+                # Try auto install after a short delay to allow device to settle
+                threading.Timer(2.0, self._try_auto_install).start()
             # request device infos when device connects
             if self.get("check_on_connect", False):
                 delay_interval = self.get("on_connect_delay", 30)
