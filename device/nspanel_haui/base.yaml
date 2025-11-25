@@ -35,8 +35,14 @@ ota:
 wifi:
   # use_address is useful when there are issues with renaming of the device name
   #use_address: nspanel.local
-  ssid: $wifi_ssid
-  password: $wifi_password
+  fast_connect: true
+  networks:
+    - ssid: $wifi_ssid
+      password: $wifi_password
+  manual_ip:
+    static_ip: 10.50.0.52
+    gateway: 10.50.0.1
+    subnet: 255.255.255.0
   power_save_mode: none
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:

@@ -31,4 +31,4 @@ substitutions:
   tft_update_url: https://github.com/gotchykid/nspanel_haui/raw/master/device/nspanel_haui.tft
 
 packages:
-  local_package: device/nspanel_haui.yaml
+  local_package: !include device/nspanel_haui.yaml
