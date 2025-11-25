@@ -40,9 +40,9 @@ wifi:
     - ssid: $wifi_ssid
       password: $wifi_password
   manual_ip:
-    static_ip: $assa
-    gateway: $asfas
-    subnet: $safa
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
   power_save_mode: none
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
