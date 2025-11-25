@@ -108,3 +108,9 @@ class NSPanelHAUI(hass.Hass):
         """
         self.log(f"Device connection status: {connected}")
         self.device.set_connected(connected)
+        # Fire a connected event so update controller can react
+        if connected:
+            from haui.abstract.event import HAUIEvent
+            from haui.mapping.const import ESP_EVENT
+            event = HAUIEvent(ESP_EVENT["connected"], "")
+            self.callback_event(event)

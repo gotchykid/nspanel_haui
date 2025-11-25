@@ -87,6 +87,12 @@ class HAUIUpdateController(HAUIPart):
         self._interval = self.get("update_interval", 0)
         self._interval_delay = self.get("on_connect_delay", 30)
         self._start_timer()
+        # If auto_install is enabled, check device info on startup
+        # in case device is already connected
+        if self.get("auto_install", True):
+            self.log("auto_install enabled, checking if device info is available")
+            # Request device info - this will trigger check_installed_version when received
+            self.request_device_info(False)
 
     def stop_part(self):
         """ Stops the part. """
