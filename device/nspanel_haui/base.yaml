@@ -6,7 +6,8 @@ substitutions:
 # ESP Configuration
 esp32:
   board: esp32dev
-
+  framework:
+    type: esp-idf
 
 # ESPHome Configuration
 esphome:
