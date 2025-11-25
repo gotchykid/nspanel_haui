@@ -50,6 +50,7 @@ class HAUIUpdateController(HAUIPart):
         self._req_fetch = False  # is being used to identify release info request
         self._req_await = False  # is being used to identify device info request
         self._release_infos = []  # store latest release infos
+        self._pending_upload_url = None  # store URL for upload when device connects
 
     # internal timers for version checks
 
@@ -226,6 +227,22 @@ class HAUIUpdateController(HAUIPart):
             self.log("No update url available")
             return
         self.log(f"Update URL: {update_url}")
+        
+        # Check if device is connected before attempting upload
+        if not self.app.device.connected:
+            self.log("WARNING: Device is not connected. Storing URL for upload when device connects.")
+            self._pending_upload_url = update_url
+            # Schedule a retry when device connects
+            self.log("Upload will be attempted automatically when device connects")
+            return
+        
+        # Device is connected, proceed with upload
+        self._do_upload(update_url)
+    
+    def _do_upload(self, update_url):
+        """ Actually performs the TFT upload. """
+        self.log(f"=== _do_upload() called with URL: {update_url} ===")
+        
         # run update - use AppDaemon instance name (convert dashes to underscores for ESPHome)
         # ESPHome service names use underscores, e.g., l2_bedroom_s16_upload_tft_url
         instance_name = self.app.name.replace("-", "_")
@@ -234,23 +251,42 @@ class HAUIUpdateController(HAUIPart):
         service_name = f"esphome/{instance_name}_upload_tft_url"
         self.log(f"Calling ESPHome service: {service_name}")
         self.log(f"Using instance name: {self.app.name} -> {instance_name}")
+        self.log(f"Device connected: {self.app.device.connected}")
+        
+        # Check if ESPHome device entity exists and is available
+        esphome_entity = f"esphome.{instance_name}"
+        if self.app.entity_exists(esphome_entity):
+            device_state = self.app.get_state(esphome_entity)
+            self.log(f"ESPHome device state: {device_state}")
+            if device_state == "unavailable" or device_state is None:
+                self.log("WARNING: ESPHome device is unavailable. Upload may not work.")
+        else:
+            self.log(f"WARNING: ESPHome entity {esphome_entity} does not exist")
+        
         try:
             # Call the upload_tft_url service with url parameter
-            self.app.call_service(service_name, url=update_url)
+            result = self.app.call_service(service_name, url=update_url)
+            self.log(f"Service call returned: {result}")
             self.log(f"Successfully called service {service_name}")
+            self.log("NOTE: Check ESPHome device logs to verify upload is actually happening")
+            self.log("The upload should start now if device is connected and online")
+            # Clear pending upload since we've attempted it
+            self._pending_upload_url = None
         except Exception as e:
             self.log(f"ERROR calling service {service_name}: {e}")
             # If upload_tft_url service doesn't exist, try the execute action method
             self.log("Trying alternative method: esphome.execute action")
             try:
                 # Use ESPHome's execute service to call the action directly
-                self.app.call_service(
+                result = self.app.call_service(
                     "esphome.execute",
                     device_id=instance_name,
                     action="upload_tft_url",
                     variables={"url": update_url}
                 )
+                self.log(f"Execute action returned: {result}")
                 self.log("Successfully called ESPHome execute action")
+                self._pending_upload_url = None
             except Exception as e2:
                 self.log(f"Alternative method also failed: {e2}")
                 import traceback
@@ -440,6 +476,13 @@ class HAUIUpdateController(HAUIPart):
         if event.name == ESP_EVENT["connected"]:
             self.log("=== Device connected event received ===")
             self._stop_timer_delay()
+            
+            # If there's a pending upload URL, try to upload now that device is connected
+            if self._pending_upload_url:
+                self.log(f"Device connected, attempting pending upload: {self._pending_upload_url}")
+                # Wait a moment for device to fully initialize
+                threading.Timer(3.0, lambda: self._do_upload(self._pending_upload_url)).start()
+            
             # If auto_install is enabled, try to install immediately on connect
             if self.get("auto_install", True):
                 self.log("auto_install enabled, attempting auto install on connect")
