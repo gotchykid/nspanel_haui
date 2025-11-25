@@ -28,11 +28,7 @@ substitutions:
   ap_password: !secret ap_password
 
   # Custom Update Url
-  tft_update_url: https://github.com/happydasch/nspanel_haui/raw/master/device/nspanel_haui.tft
+  tft_update_url: https://github.com/gotchykid/nspanel_haui/raw/master/device/nspanel_haui.tft
 
 packages:
-  remote_package:
-    url: https://github.com/happydasch/nspanel_haui
-    ref: master
-    files:
-      - device/nspanel_haui.yaml
+  local_package: device/nspanel_haui.yaml
