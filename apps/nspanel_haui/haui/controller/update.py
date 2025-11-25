@@ -218,7 +218,7 @@ class HAUIUpdateController(HAUIPart):
             latest_release = self._get_latest_release()
             if latest_release is None:
                 self.log("Still no release info available, cannot proceed with update")
-                return
+            return
         
         self.log(f"Latest release: {latest_release.get('tag_name', 'unknown')}")
         update_url = self._get_update_url(latest_release)
@@ -227,18 +227,34 @@ class HAUIUpdateController(HAUIPart):
             return
         self.log(f"Update URL: {update_url}")
         # run update - use AppDaemon instance name (convert dashes to underscores for ESPHome)
-        # ESPHome service names use underscores, e.g., l2_bedroom_s16_upload_tft
+        # ESPHome service names use underscores, e.g., l2_bedroom_s16_upload_tft_url
         instance_name = self.app.name.replace("-", "_")
-        service_name = f"esphome/{instance_name}_upload_tft"
+        # ESPHome exposes actions as services: {device_name}_{action_name}
+        # The action is "upload_tft_url" which takes a "url" parameter
+        service_name = f"esphome/{instance_name}_upload_tft_url"
         self.log(f"Calling ESPHome service: {service_name}")
         self.log(f"Using instance name: {self.app.name} -> {instance_name}")
         try:
+            # Call the upload_tft_url service with url parameter
             self.app.call_service(service_name, url=update_url)
             self.log(f"Successfully called service {service_name}")
         except Exception as e:
             self.log(f"ERROR calling service {service_name}: {e}")
-            import traceback
-            self.log(f"Traceback: {traceback.format_exc()}")
+            # If upload_tft_url service doesn't exist, try the execute action method
+            self.log("Trying alternative method: esphome.execute action")
+            try:
+                # Use ESPHome's execute service to call the action directly
+                self.app.call_service(
+                    "esphome.execute",
+                    device_id=instance_name,
+                    action="upload_tft_url",
+                    variables={"url": update_url}
+                )
+                self.log("Successfully called ESPHome execute action")
+            except Exception as e2:
+                self.log(f"Alternative method also failed: {e2}")
+                import traceback
+                self.log(f"Traceback: {traceback.format_exc()}")
 
     def _try_auto_install(self):
         """ Try to auto-install TFT if auto_install is enabled. """
