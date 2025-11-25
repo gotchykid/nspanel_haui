@@ -81,7 +81,7 @@ script:
           auto yaml_version = "$yaml_version";
           auto tft_version = id(display_tft_version).get_state();
           auto required_tft_version = "$required_tft_version";
-          const json::json_build_t payload = [=](JsonObject root) {
+          const json::json_build_t payload = [&](JsonObject root) {
             root["device_version"] = device_version;
             root["yaml_version"] = yaml_version;
             root["tft_version"] = tft_version;

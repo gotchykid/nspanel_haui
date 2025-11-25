@@ -279,7 +279,7 @@ script:
           ESP_LOGD("haui", "Script: publish_device_info");
           auto name = App.get_name();
           auto friendly_name = App.get_friendly_name();
-          auto device_version = to_string(ESPHOME_VERSION);
+          auto device_version = std::string(ESPHOME_VERSION);
           auto yaml_version = "$yaml_version";
           const json::json_build_t payload = [
               name, friendly_name, device_version, yaml_version
