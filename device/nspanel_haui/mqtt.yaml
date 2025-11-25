@@ -66,7 +66,7 @@ mqtt:
               // extract the values
               JsonArray array = doc["commands"].as<JsonArray>();
               for(JsonVariant v : array) {
-                Serial.println(v.as<int>());
+                ESP_LOGD("haui", "Command value: %d", v.as<int>());
                 auto command = v.as<std::string>();
                 id(haui_disp).send_command(command.c_str());
               }
