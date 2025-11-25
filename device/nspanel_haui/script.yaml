@@ -77,14 +77,11 @@ script:
     then:
       - lambda: |-
           ESP_LOGD("haui", "Script: publish_device_info");
-          auto device_version = to_string(ESPHOME_VERSION);
+          auto device_version = std::string(ESPHOME_VERSION);
           auto yaml_version = "$yaml_version";
           auto tft_version = id(display_tft_version).get_state();
           auto required_tft_version = "$required_tft_version";
-          const json::json_build_t payload = [
-              device_version, yaml_version, tft_version,
-              required_tft_version
-          ](JsonObject root) {
+          const json::json_build_t payload = [=](JsonObject root) {
             root["device_version"] = device_version;
             root["yaml_version"] = yaml_version;
             root["tft_version"] = tft_version;
