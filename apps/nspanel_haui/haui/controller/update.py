@@ -194,43 +194,74 @@ class HAUIUpdateController(HAUIPart):
 
     def run_update_display(self):
         """ Runs the update process for the display. """
+        self.log("=== run_update_display() called ===")
         latest_release = self._get_latest_release()
         if latest_release is None:
             self.log("No release info available")
             return
+        self.log(f"Latest release: {latest_release.get('tag_name', 'unknown')}")
         update_url = self._get_update_url(latest_release)
         if update_url is None:
             self.log("No update url available")
             return
-        # run update
+        self.log(f"Update URL: {update_url}")
+        # run update - use device name from config
         name = self.app.device.get("name", "nspanel_haui")
-        self.app.call_service(f"esphome/{name}_upload_tft_url", url=update_url)
+        service_name = f"esphome/{name}_upload_tft_url"
+        self.log(f"Calling ESPHome service: {service_name}")
+        try:
+            self.app.call_service(service_name, url=update_url)
+            self.log(f"Successfully called service {service_name}")
+        except Exception as e:
+            self.log(f"ERROR calling service {service_name}: {e}")
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}")
 
     def check_installed_version(self):
         """ Checks on connect if a update is available. """
+        self.log("=== check_installed_version() called ===")
         device_info = self.app.device.device_info
+        self.log(f"device_info: {device_info}")
+        self.log(f"device.connected: {self.app.device.connected}")
+        self.log(f"auto_install setting: {self.get('auto_install', True)}")
+        
         required_version = device_info.get("required_tft_version")
         installed_version = device_info.get("tft_version")
+        
+        self.log(f"required_version: {required_version}")
+        self.log(f"installed_version: {installed_version}")
+        
         if required_version is None or installed_version is None:
             # notify about unknown versions
+            self.log("Version information is missing")
+            # If auto_install is enabled and device is connected, try to install anyway
+            if self.get("auto_install", True) and self.app.device.connected:
+                self.log("Version info missing but auto_install enabled and device connected, attempting auto install")
+                self.run_update_display()
+                return
             msg = self.translate("Got unknown TFT-Version information.")
         else:
             # check for outdated versions
-
             v_req = self._parse_version(required_version)
             v_inst = self._parse_version(installed_version)
+            self.log(f"Parsed required version: {v_req}, installed version: {v_inst}")
+            
             if v_req <= v_inst:
                 # everything is fine (installed version is newer or equal to required version)
+                self.log("Version check passed, no update needed")
                 return
             # invalid or unknown version installed
             if self.get("auto_install", True) and v_inst == Version("0.0.0"):
                 if self.app.device.connected:
-                    self.log(f"Invalid version installed: {installed_version}"
-                             ", auto install display")
+                    self.log(f"Invalid version installed: {installed_version}, auto install display")
                     self.run_update_display()
                     return
+                else:
+                    self.log("Device not connected, cannot auto install")
             # notify about outdated tft version
             msg = self.translate("Your TFT-version is outdated.")
+        
+        self.log("Showing update notification popup")
         self._stop_timer_delay()  # ensure there is no delay on connect timer
         msg += "\r\n"
         msg += self.translate("Do you want to check for a update?")
@@ -341,6 +372,7 @@ class HAUIUpdateController(HAUIPart):
 
         # on connect
         if event.name == ESP_EVENT["connected"]:
+            self.log("=== Device connected event received ===")
             self._stop_timer_delay()
             # request device infos when device connects
             if self.get("check_on_connect", False):
@@ -350,18 +382,25 @@ class HAUIUpdateController(HAUIPart):
             # always request device infos when device is connected
             # so a check for outdated tft version can be done faster
             # than first update check
+            self.log("Requesting device info on connect")
             self.request_device_info(False)
 
         # device info received, check for update using device info
         if event.name == ESP_RESPONSE["res_device_info"]:
+            self.log("=== Device info response received ===")
             device_info = json.loads(event.value)
+            self.log(f"Received device_info: {device_info}")
             self.app.device.set_device_info(device_info, append=True)
             # check the required tft version defined on the esp
             # to match currently installed version on the display
             if not self._req_await:
+                self.log("_req_await is False, calling check_installed_version()")
                 self.check_installed_version()
             # only if update interval is bigger than 0 and update controller
             # requested the value
             elif self._req_await and self._interval > 0:
+                self.log("_req_await is True and interval > 0, checking for update")
                 threading.Thread(target=self.check_for_update, daemon=True).start()
                 self._req_await = False
+            else:
+                self.log(f"_req_await={self._req_await}, interval={self._interval}, skipping version check")
